@@ -1,0 +1,31 @@
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# .NET / LocalPageBackend
+bin/
+obj/
+*.user
+
+# Runtime output — generated per task run, not source
+LocalPageBackend/Agent_Workspace/*
+!LocalPageBackend/Agent_Workspace/.gitkeep
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
