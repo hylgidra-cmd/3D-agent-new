@@ -5,6 +5,15 @@ using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- RENDER INOTIFY XATOSINI TO'G'RILASH UCHUN QO'SHILGAN QISMI ---
+// appsettings.json fayllarini o'zgarishini kuzatishni (reloadOnChange) o'chirib qo'yamiz.
+// Bu Render platformasida "inotify limit" (128) xatoligining oldini oladi.
+builder.Configuration.Sources.Clear();
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false);
+builder.Configuration.AddEnvironmentVariables();
+// ------------------------------------------------------------------
+
 // Render (and most PaaS hosts) inject PORT and expect the app to bind 0.0.0.0:$PORT.
 // Local dev leaves PORT unset, so launchSettings.json's URLs keep working unchanged.
 var renderPort = Environment.GetEnvironmentVariable("PORT");
