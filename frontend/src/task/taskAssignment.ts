@@ -7,6 +7,7 @@ import { useI18nStore } from "../store/i18nStore";
 
 const API_URLS = [
   import.meta.env.VITE_API_URL,
+  "https://agent-backend-8qux.onrender.com/api/agents/work",
   "http://localhost:5278/api/agents/work",
   "http://localhost:5080/api/agents/work",
 ].filter(Boolean) as string[];
