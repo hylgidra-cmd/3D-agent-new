@@ -137,9 +137,12 @@ namespace LocalPageBackend.Controllers
                 // locks freshly created files while it picks them up, which also surfaces
                 // as "Access to the path ... is denied". LocalAppData is always writable by
                 // the account running the app and isn't synced by OneDrive.
-                var workspaceRoot = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "LocalPageBackend", "AgentWork");
+                var baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                if (string.IsNullOrWhiteSpace(baseFolder))
+                {
+                    baseFolder = Path.GetTempPath();
+                }
+                var workspaceRoot = Path.Combine(baseFolder, "LocalPageBackend", "AgentWork");
                 Directory.CreateDirectory(workspaceRoot);
                 tempDir = Directory.CreateDirectory(Path.Combine(workspaceRoot, $"agentwork_{Guid.NewGuid():N}"));
                 foreach (var (relativePath, content) in files)
