@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.Sources.Clear();
 builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
 builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false);
+builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
 builder.Configuration.AddEnvironmentVariables();
 // ------------------------------------------------------------------
 
@@ -75,7 +76,19 @@ builder.Services.AddSingleton<IAgentWorkProvider, DatabaseAgentWorkProvider>();
 builder.Services.AddSingleton<IAgentWorkProvider, QaAgentWorkProvider>();
 builder.Services.AddSingleton<IAgentWorkProvider, DevOpsAgentWorkProvider>();
 builder.Services.AddSingleton<IAgentWorkProvider, UiUxAgentWorkProvider>();
+builder.Services.AddSingleton<IAgentWorkProvider, GraphicAgentWorkProvider>();
+builder.Services.AddSingleton<IAgentWorkProvider, ThreeDAgentWorkProvider>();
+builder.Services.AddSingleton<IAgentWorkProvider, MobileAgentWorkProvider>();
 builder.Services.AddSingleton<AgentWorkProviderRegistry>();
+
+// Legacy AgentsController dependencies
+builder.Services.AddTransient<IAgent, FrontendAgent>();
+builder.Services.AddTransient<IAgent, BackendAgent>();
+builder.Services.AddTransient<IAgent, GraphicAgent>();
+builder.Services.AddTransient<IAgent, UiUxAgent>();
+builder.Services.AddTransient<IAgent, ThreeDAgent>();
+builder.Services.AddTransient<IAgent, MobileAgent>();
+builder.Services.AddTransient<OrchestratorService>();
 
 builder.Services.AddCors(options =>
 {

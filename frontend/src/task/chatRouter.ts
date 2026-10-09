@@ -37,12 +37,17 @@ const AGENT_MENTION_KEYWORDS: Array<{ agentId: AgentId; keywords: string[] }> = 
   { agentId: "Android_iOS", keywords: ["android", "ios", "mobile", "mobil", "kai"] },
 ];
 
-function findMentionedAgent(lower: string): AgentId | null {
+function findAllMentionedAgents(lower: string): AgentId[] {
+  const found: AgentId[] = [];
   for (const rule of AGENT_MENTION_KEYWORDS) {
-    if (rule.keywords.some((keyword) => lower.includes(keyword))) return rule.agentId;
+    if (rule.keywords.some((keyword) => lower.includes(keyword))) {
+      if (!found.includes(rule.agentId)) found.push(rule.agentId);
+    }
   }
-  return null;
+  return found;
 }
+
+
 
 // Minutes/hours mentioned anywhere in the message, in either language — "in 10 minutes", "10m",
 // "10 daqiqada", "2 soat". Hours checked first so "2 hours"/"2 soat" isn't also partially matched
@@ -211,7 +216,23 @@ export function handleChatMessage(raw: string): ChatOutcome {
     return { reply: buildStatusReport(locale) };
   }
 
-  const mentionedAgentId = findMentionedAgent(lower);
+  const allMentioned = findAllMentionedAgents(lower);
+  if (allMentioned.length > 1) {
+    const { minutes, cleaned } = extractTimeLimit(text);
+    const names = allMentioned.map((id) => `${AGENTS_BY_ID[id].personName} (${AGENTS_BY_ID[id].name})`).join(", ");
+    for (const agentId of allMentioned) {
+      const task = extractTaskText(cleaned, agentId);
+      dispatchTaskViaChat(agentId, task, minutes);
+    }
+    const isUz = locale === "uz";
+    return {
+      reply: isUz
+        ? `Tushunarli! Topshiriqni ${names} ga yubordim. Ular o'z stollariga borib, ishga kirishishdi! Ish yakunlanishi bilan tayyor ZIP fayllar avtomatik yuklanadi va sizga xabar beraman.`
+        : `Understood! Dispatched the tasks to: ${names}. They are heading to their desks now. As each finishes, their ZIP deliverable will download and I'll notify you here!`
+    };
+  }
+
+  const mentionedAgentId = allMentioned[0];
   if (!mentionedAgentId) {
     // No role/person named — before assuming this is a mis-typed task, check whether the task
     // CONTENT itself implies a specialty (taskAssignment.ts's ROUTING_RULES). Only dispatch when

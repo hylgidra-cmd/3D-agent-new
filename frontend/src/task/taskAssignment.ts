@@ -2,13 +2,24 @@ import { AGENTS_BY_ID, type AgentId } from "../data/agents";
 import { useOfficeStore } from "../store/officeStore";
 import { useTaskHistoryStore } from "../store/taskHistoryStore";
 import { useActivityLogStore } from "../store/activityLogStore";
+import { useChatStore } from "../store/chatStore";
+import { useI18nStore } from "../store/i18nStore";
 
-const API_URL = "http://localhost:5080/api/agents/work";
+const API_URLS = [
+  import.meta.env.VITE_API_URL,
+  "http://localhost:5278/api/agents/work",
+  "http://localhost:5080/api/agents/work",
+].filter(Boolean) as string[];
 
-// Only the three office agents LocalPageBackend actually has a registered IAgentWorkProvider
-// for today (see AgentWorkProviderRegistry) — Graphic/3D_Model/Android_iOS exist in the 3D
-// office and the backend's simulation roster, but assigning a real task to them would 404.
-export const REAL_BACKEND_AGENT_IDS: AgentId[] = ["Frontend", "Backend", "UI_UX"];
+// All six office agents have registered IAgentWorkProviders in LocalPageBackend!
+export const REAL_BACKEND_AGENT_IDS: AgentId[] = [
+  "Frontend",
+  "Backend",
+  "UI_UX",
+  "Graphic",
+  "3D_Model",
+  "Android_iOS"
+];
 
 export interface AssignTaskResult {
   ok: boolean;
@@ -44,14 +55,25 @@ export async function assignRealTask(
   log(`> ${agentName} received a real task: "${task}"${timeLimitMinutes ? ` (limit: ${timeLimitMinutes}m)` : ""}`);
 
   try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agentId, task }),
-    });
+    let response: Response | null = null;
+    let lastError: Error | null = null;
 
-    if (!response.ok) {
-      throw new Error(`Agent responded with ${response.status} ${response.statusText}`);
+    for (const url of API_URLS) {
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agentId, task }),
+        });
+        if (response.ok) break;
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error(String(e));
+      }
+    }
+
+    if (!response || !response.ok) {
+      const statusText = response ? `${response.status} ${response.statusText}` : lastError?.message || "Connection refused";
+      throw new Error(`Agent backend error: ${statusText}`);
     }
 
     const blob = await response.blob();
@@ -67,11 +89,27 @@ export async function assignRealTask(
 
     useTaskHistoryStore.getState().addCompletedTask({ agentId, task, completedAt: Date.now(), filename, blob });
     log(`> ${agentName} finished the task — ZIP ready in Task History`);
+
+    const isUz = useI18nStore.getState().locale === "uz";
+    useChatStore.getState().addNataliMessage(
+      isUz
+        ? `🎉 ${agentName} ("${agentId}") o'z vazifasini muvaffaqiyatli yakunladi!\n📦 "${task}" loyihasi tayyor va "${filename}" avtomatik yuklab olindi.`
+        : `🎉 ${agentName} (${agentId}) successfully finished their task!\n📦 Project for "${task}" is ready and "${filename}" has been downloaded.`
+    );
+
     return { ok: true };
   } catch (err) {
     const message =
-      err instanceof Error ? err.message : "Could not reach the agent backend. Is it running on port 5080?";
+      err instanceof Error ? err.message : "Could not reach the agent backend. Is it running?";
     log(`> ${agentName} hit an error: ${message}`);
+
+    const isUz = useI18nStore.getState().locale === "uz";
+    useChatStore.getState().addNataliMessage(
+      isUz
+        ? `⚠️ ${agentName} ("${agentId}") vazifani bajarishda muammoga duch keldi: ${message}`
+        : `⚠️ ${agentName} (${agentId}) encountered an error: ${message}`
+    );
+
     return { ok: false, error: message };
   } finally {
     store.setManualOverride(agentId, false);
